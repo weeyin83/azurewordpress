@@ -1,12 +1,14 @@
 FROM ubuntu
 MAINTAINER bartr
-EXPOSE 80
-EXPOSE 443
+EXPOSE 2222 80 443
 
-RUN mkdir -p /var/lock/apache2 && mkdir -p /var/log/apache2 && mkdir -p /var/run/apache2 && \
+RUN mkdir -p /var/lock/apache2 && mkdir -p /var/log/apache2 && mkdir -p /var/run/apache2 && mkdir -p /usr/local && \
 apt-get update -y && \
 apt-get install -y git apache2 php libapache2-mod-php php-mcrypt php-mysql \
 apt-utils nano curl wget mysql-client-core-5.7
+
+RUN apt-get install -y --no-install-recommends openssh-server \
+    && echo "root:Docker!" | chpasswd
 
 ENV APACHE_CONFDIR=/etc/apache2 \
 APACHE_ENVVARS=/etc/apache2/envvars \
@@ -22,7 +24,8 @@ WORDPRESS_DB_NAME=wordpress \
 FORCE_SSL=true
 
 WORKDIR "/usr/local"
-COPY wprun.sh wp-config.php /usr/local/
+COPY wp-config.php wprun.sh /usr/local/
+COPY sshd_config /etc/ssh/
 
 RUN chmod +x wprun.sh && \
 cp /etc/ssl/certs/ssl-cert-snakeoil.pem /etc/ssl/certs/apache.pem && \
@@ -34,6 +37,7 @@ a2ensite default-ssl.conf && \
 sed -i "s@/var/www@/home/www@" /etc/apache2/sites-enabled/default-ssl.conf && \
 sed -i "s@/var/www@/home/www@" /etc/apache2/sites-enabled/000-default.conf && \
 sed -i "s@/var/www@/home/www@" /etc/apache2/apache2.conf && \
-echo -e "[client]\nssl-mode=VERIFY_CA\nssl-ca=/etc/ssl/certs/Baltimore_CyberTrust_Root.pem" > /etc/my.cnf
+echo -e "[client]\nssl-mode=VERIFY_CA\nssl-ca=/etc/ssl/certs/Baltimore_CyberTrust_Root.pem" > /etc/my.cnf && \
+export > /home/env
 
 CMD ["bash", "wprun.sh"]
